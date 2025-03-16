@@ -1,22 +1,37 @@
+/**
+ * ProjectCard Component
+ * 
+ * Displays a card for a crypto project in a grid layout.
+ * This is a server component as it doesn't need client-side interactivity.
+ */
+
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { CryptoProject } from '@/lib/store/cryptoStore';
+import { CryptoProject } from '@/lib/data/crypto-projects';
 import TomatoRating from '../ui/TomatoRating';
 
+/**
+ * Props for the ProjectCard component
+ */
 interface ProjectCardProps {
+  /** The crypto project to display */
   project: CryptoProject;
 }
 
-const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
+/**
+ * ProjectCard displays summary information about a crypto project
+ */
+export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-      <Link href={`/project/${project.id}`} className="block">
+      <Link href={`/project/${project.id}`} className="block" aria-label={`View details for ${project.name}`}>
         <div className="relative h-48 w-full">
           <Image 
             src={project.coverImage || '/placeholder-project.jpg'} 
             alt={project.name}
             fill
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-cover"
           />
           {/* Rating badge overlay */}
@@ -43,6 +58,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       </Link>
     </div>
   );
-};
+}
 
 export default ProjectCard; 

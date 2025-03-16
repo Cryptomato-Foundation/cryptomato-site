@@ -1,15 +1,52 @@
-'use client';
+/**
+ * Home Page Component
+ * 
+ * The main landing page for the Cryptomato website.
+ * This is a server component that loads data and passes it to client components.
+ */
 
-import { useEffect } from 'react';
-import Image from 'next/image';
+import { Suspense } from 'react';
 import Link from 'next/link';
-import useCryptoStore from '@/lib/store/cryptoStore';
+import Image from 'next/image';
+import { getAllProjects, getTrendingProjects } from '@/lib/data/crypto-projects';
 import Navbar from '@/components/layout/Navbar';
 import HeroCarousel from '@/components/ui/HeroCarousel';
 import ProjectList from '@/components/project/ProjectList';
+import Footer from '@/components/layout/Footer';
 
+/**
+ * Loading component for ProjectList
+ */
+function ProjectListFallback() {
+  return (
+    <div className="py-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="bg-white shadow rounded-lg overflow-hidden animate-pulse">
+            <div className="h-48 w-full bg-gray-300"></div>
+            <div className="p-4">
+              <div className="h-6 bg-gray-300 rounded mb-2 w-3/4"></div>
+              <div className="h-4 bg-gray-300 rounded mb-1 w-full"></div>
+              <div className="h-4 bg-gray-300 rounded w-4/5"></div>
+              <div className="mt-3 flex justify-between">
+                <div className="h-3 bg-gray-300 rounded w-1/4"></div>
+                <div className="h-3 bg-gray-300 rounded w-1/5"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Home page component
+ */
 export default function Home() {
-  const { projects, trendingProjects, searchQuery } = useCryptoStore();
+  // Get data from server-side functions
+  const allProjects = getAllProjects();
+  const trendingProjects = getTrendingProjects();
   
   return (
     <main className="min-h-screen bg-gray-50">
@@ -17,86 +54,33 @@ export default function Home() {
       
       {/* Hero section with carousel */}
       <section>
-        <HeroCarousel projects={trendingProjects} />
+        <Suspense fallback={
+          <div className="w-full h-[400px] bg-gray-800 animate-pulse flex items-center justify-center">
+            <p className="text-white text-xl">Loading featured projects...</p>
+          </div>
+        }>
+          <HeroCarousel projects={trendingProjects} />
+        </Suspense>
       </section>
       
       {/* Main content */}
       <div className="container mx-auto px-4 py-8">
         {/* Section heading */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
-            {searchQuery ? `Search Results: ${searchQuery}` : 'All Crypto Projects'}
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800">All Crypto Projects</h2>
           <p className="text-gray-600 mt-1">
-            {searchQuery 
-              ? `Showing results for "${searchQuery}"`
-              : 'Browse all crypto projects and see their Cryptomato score'
-            }
+            Browse all crypto projects and see their Cryptomato score
           </p>
         </div>
         
         {/* Projects list with infinite scroll */}
-        <ProjectList projects={projects} searchQuery={searchQuery} />
+        <Suspense fallback={<ProjectListFallback />}>
+          <ProjectList projects={allProjects} />
+        </Suspense>
       </div>
       
       {/* Footer */}
-      <footer className="bg-[var(--secondary)] text-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <Link href="/" className="text-white font-bold text-xl flex items-center gap-2">
-                <Image 
-                  src="/cryptomato-logo.svg" 
-                  alt="Cryptomato"
-                  width={30} 
-                  height={30}
-                  className="object-contain"
-                />
-                <span>Cryptomato</span>
-              </Link>
-              <p className="text-gray-400 mt-2 text-sm">
-                The trusted source for crypto project reviews
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-              <div>
-                <h3 className="font-semibold mb-3">Explore</h3>
-                <ul className="space-y-2 text-gray-400 text-sm">
-                  <li><Link href="/exchanges" className="hover:text-white">Exchanges</Link></li>
-                  <li><Link href="/projects" className="hover:text-white">Projects</Link></li>
-                  <li><Link href="/vc" className="hover:text-white">VC</Link></li>
-                  <li><Link href="/agency" className="hover:text-white">Agency</Link></li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-3">Categories</h3>
-                <ul className="space-y-2 text-gray-400 text-sm">
-                  <li><Link href="/defi" className="hover:text-white">DeFi</Link></li>
-                  <li><Link href="/nft" className="hover:text-white">NFT</Link></li>
-                  <li><Link href="/gamefi" className="hover:text-white">GameFi</Link></li>
-                  <li><Link href="/meme" className="hover:text-white">Meme Coins</Link></li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-3">About</h3>
-                <ul className="space-y-2 text-gray-400 text-sm">
-                  <li><Link href="/about" className="hover:text-white">About Us</Link></li>
-                  <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
-                  <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-                  <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
-            <p>&copy; {new Date().getFullYear()} Cryptomato. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }

@@ -1,5 +1,5 @@
 ---
-description: 
+description: refer to the project rule when making any code changes.
 globs: 
 alwaysApply: false
 ---

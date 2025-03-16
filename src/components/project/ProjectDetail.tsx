@@ -1,13 +1,27 @@
+/**
+ * ProjectDetail Component
+ * 
+ * Displays detailed information about a specific crypto project.
+ * This is a server component for rendering project details.
+ */
+
 import React from 'react';
 import Image from 'next/image';
-import { CryptoProject } from '@/lib/store/cryptoStore';
+import { CryptoProject } from '@/lib/data/crypto-projects';
 import TomatoRating from '../ui/TomatoRating';
 
+/**
+ * Props for the ProjectDetail component
+ */
 interface ProjectDetailProps {
+  /** The crypto project to display details for */
   project: CryptoProject;
 }
 
-const ProjectDetail: React.FC<ProjectDetailProps> = ({ project }) => {
+/**
+ * ProjectDetail displays comprehensive information about a crypto project
+ */
+export function ProjectDetail({ project }: ProjectDetailProps) {
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       {/* Project header with banner image */}
@@ -16,6 +30,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project }) => {
           src={project.coverImage || '/placeholder-project.jpg'} 
           alt={project.name}
           fill
+          sizes="100vw"
+          priority
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
@@ -36,7 +52,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project }) => {
           <p className="text-gray-700">{project.description}</p>
         </div>
         
-        {/* Additional details would go here - for now just placeholders */}
+        {/* Additional details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h3 className="font-semibold mb-2">Key Information</h3>
@@ -69,6 +85,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project }) => {
                     project.tomatoRating >= 60 ? 'bg-[var(--fresh)]' : 'bg-[var(--rotten)]'
                   }`}
                   style={{ width: `${project.tomatoRating}%` }}
+                  role="progressbar"
+                  aria-valuenow={project.tomatoRating}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
                 ></div>
               </div>
               <span className="ml-3 font-bold">{project.tomatoRating}%</span>
@@ -86,6 +106,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project }) => {
       </div>
     </div>
   );
-};
+}
 
 export default ProjectDetail; 

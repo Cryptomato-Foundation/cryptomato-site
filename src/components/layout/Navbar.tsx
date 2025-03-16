@@ -1,11 +1,41 @@
+/**
+ * Navbar Component
+ * 
+ * The main navigation bar for the Cryptomato website.
+ * This is a server component that includes a client-side SearchInput component
+ * to handle search functionality.
+ */
+
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import useCryptoStore from '@/lib/store/cryptoStore';
+import SearchInput from './SearchInput';
 
-const Navbar: React.FC = () => {
-  const { searchQuery, setSearchQuery } = useCryptoStore();
+/**
+ * Site navigation categories
+ */
+const CATEGORIES = [
+  { name: 'TRENDING ON CT', href: '/trending' },
+  { name: 'DeFi', href: '/defi' },
+  { name: 'NFT', href: '/nft' },
+  { name: 'GameFi', href: '/gamefi' },
+  { name: 'Meme Coins', href: '/meme' },
+];
 
+/**
+ * Main navigation links
+ */
+const NAV_LINKS = [
+  { name: 'Exchanges', href: '/exchanges' },
+  { name: 'Projects', href: '/projects' },
+  { name: 'VC', href: '/vc' },
+  { name: 'Agency', href: '/agency' },
+];
+
+/**
+ * Navbar component for site-wide navigation
+ */
+export function Navbar() {
   return (
     <header>
       {/* Main navbar */}
@@ -19,36 +49,32 @@ const Navbar: React.FC = () => {
               width={40} 
               height={40}
               className="object-contain"
+              priority // Important for LCP
             />
             <span>Cryptomato</span>
           </Link>
           
-          {/* Search bar */}
-          <div className="relative w-full max-w-md mx-4">
-            <input 
-              type="text"
-              placeholder="Search for a crypto project..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full py-2 px-4 pr-10 rounded-full bg-white text-black focus:outline-none"
-            />
-            <button className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-          </div>
+          {/* Search bar - Client component */}
+          <SearchInput />
           
           {/* Navigation links */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/exchanges" className="nav-link">Exchanges</Link>
-            <Link href="/projects" className="nav-link">Projects</Link>
-            <Link href="/vc" className="nav-link">VC</Link>
-            <Link href="/agency" className="nav-link">Agency</Link>
+            {NAV_LINKS.map(link => (
+              <Link 
+                key={link.href}
+                href={link.href} 
+                className="nav-link"
+              >
+                {link.name}
+              </Link>
+            ))}
           </nav>
           
           {/* Login button */}
-          <button className="bg-white text-[var(--primary)] font-semibold py-1 px-4 rounded-full hover:bg-gray-100 transition-colors">
+          <button 
+            className="bg-white text-[var(--primary)] font-semibold py-1 px-4 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Login or signup"
+          >
             LOGIN/SIGNUP
           </button>
         </div>
@@ -58,16 +84,20 @@ const Navbar: React.FC = () => {
       <div className="bg-[var(--secondary)] text-white py-2">
         <div className="container mx-auto px-4">
           <nav className="flex items-center justify-center md:justify-start space-x-6 overflow-x-auto">
-            <Link href="/trending" className="whitespace-nowrap hover:opacity-80 text-sm font-medium">TRENDING ON CT</Link>
-            <Link href="/defi" className="whitespace-nowrap hover:opacity-80 text-sm">DeFi</Link>
-            <Link href="/nft" className="whitespace-nowrap hover:opacity-80 text-sm">NFT</Link>
-            <Link href="/gamefi" className="whitespace-nowrap hover:opacity-80 text-sm">GameFi</Link>
-            <Link href="/meme" className="whitespace-nowrap hover:opacity-80 text-sm">Meme Coins</Link>
+            {CATEGORIES.map(category => (
+              <Link 
+                key={category.href}
+                href={category.href} 
+                className={`whitespace-nowrap hover:opacity-80 text-sm ${category.name === 'TRENDING ON CT' ? 'font-medium' : ''}`}
+              >
+                {category.name}
+              </Link>
+            ))}
           </nav>
         </div>
       </div>
     </header>
   );
-};
+}
 
 export default Navbar; 

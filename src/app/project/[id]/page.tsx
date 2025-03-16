@@ -1,45 +1,35 @@
-'use client';
+/**
+ * Project Detail Page
+ * 
+ * Displays detailed information about a specific crypto project.
+ * This is a server component that loads data server-side.
+ */
 
-import { useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import useCryptoStore from '@/lib/store/cryptoStore';
+import { notFound } from 'next/navigation';
+import { getProjectById } from '@/lib/data/crypto-projects';
 import Navbar from '@/components/layout/Navbar';
 import ProjectDetail from '@/components/project/ProjectDetail';
+import Footer from '@/components/layout/Footer';
 
-export default function ProjectPage() {
-  const params = useParams();
-  const { projects, selectProject, selectedProject, clearSelectedProject } = useCryptoStore();
+/**
+ * Props for the ProjectPage component
+ */
+interface ProjectPageProps {
+  params: {
+    id: string;
+  };
+}
+
+/**
+ * Project detail page component
+ */
+export default function ProjectPage({ params }: ProjectPageProps) {
+  const projectId = params.id;
+  const project = getProjectById(projectId);
   
-  const projectId = params.id as string;
-  
-  // Load project on mount
-  useEffect(() => {
-    if (projectId) {
-      selectProject(projectId);
-    }
-    
-    // Clear selected project on unmount
-    return () => {
-      clearSelectedProject();
-    };
-  }, [projectId, selectProject, clearSelectedProject]);
-  
-  // If project not found or loading
-  if (!selectedProject) {
-    return (
-      <main className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="text-2xl font-bold mb-4">Loading project...</h1>
-          <p className="text-gray-600">
-            {projects.length > 0 
-              ? "Looking for this project..."
-              : "No projects available"
-            }
-          </p>
-        </div>
-      </main>
-    );
+  // If project not found, return 404
+  if (!project) {
+    notFound();
   }
   
   return (
@@ -47,17 +37,30 @@ export default function ProjectPage() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <ProjectDetail project={selectedProject} />
+        <ProjectDetail project={project} />
       </div>
       
-      {/* Footer could be extracted as a component for reuse */}
-      <footer className="bg-[var(--secondary)] text-white py-6 mt-12">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-400 text-sm">
-            &copy; {new Date().getFullYear()} Cryptomato. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer minimal />
     </main>
   );
+}
+
+/**
+ * Generate metadata for the project page
+ */
+export async function generateMetadata({ params }: ProjectPageProps) {
+  const projectId = params.id;
+  const project = getProjectById(projectId);
+  
+  if (!project) {
+    return {
+      title: 'Project Not Found - Cryptomato',
+      description: 'The requested crypto project could not be found.',
+    };
+  }
+  
+  return {
+    title: `${project.name} - Cryptomato`,
+    description: project.description,
+  };
 } 
