@@ -1,20 +1,4 @@
-# Cryptomato
-
-Cryptomato is a multi-chain DeFi platform that enables seamless cross-chain transactions and asset management.
-
-## Features
-
-- Cross-chain token transfers via LayerZero Protocol
-- Multi-chain wallet support with Particle Network AA wallet integration
-- Real-time DeFi analytics and portfolio tracking
-- Gasless transactions for improved user experience
-
-## Tech Stack
-
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
-- **Backend**: Node.js, NestJS, TypeScript
-- **Blockchain**: Solidity 0.8+, LayerZero Protocol, Foundry/Hardhat
-- **Authentication**: Firebase Auth, Particle Network
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
@@ -32,40 +16,21 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Development
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-### Prerequisites
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-- Node.js 18.0.0 or later
-- npm or yarn
-- Git
+## Learn More
 
-### Installation
+To learn more about Next.js, take a look at the following resources:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Cryptomato-Foundation/cryptomato-site.git
-   cd cryptomato-site
-   ```
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-3. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+## Deploy on Vercel
 
-## Contributing
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
