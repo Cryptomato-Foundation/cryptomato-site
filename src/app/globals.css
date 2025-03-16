@@ -1,8 +1,18 @@
 @import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Cryptomato theme (Rotten Tomatoes like) */
+  --primary: #fa320a;  /* RT red color */
+  --secondary: #1c1c1c;
+  --fresh: #00b300;    /* Fresh (good rating) color */
+  --rotten: #ff3333;   /* Rotten (bad rating) color */
+  --gray: #999999;     /* Gray for not rated */
 }
 
 @theme inline {
@@ -23,4 +33,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-[var(--primary)] text-white px-4 py-2 rounded hover:opacity-90;
+  }
+  
+  .nav-link {
+    @apply font-semibold text-white hover:opacity-80 transition-opacity;
+  }
 }
