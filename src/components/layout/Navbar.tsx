@@ -10,6 +10,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import SearchInput from './SearchInput';
+import { LoginButton } from '../auth/LoginButton';
 
 /**
  * Site navigation categories
@@ -70,13 +71,8 @@ export function Navbar() {
             ))}
           </nav>
           
-          {/* Login button */}
-          <button 
-            className="bg-white text-[var(--primary)] font-semibold py-1 px-4 rounded-full hover:bg-gray-100 transition-colors"
-            aria-label="Login or signup"
-          >
-            LOGIN/SIGNUP
-          </button>
+          {/* Login button - replaced with LoginButton component */}
+          <LoginButton />
         </div>
       </div>
       
