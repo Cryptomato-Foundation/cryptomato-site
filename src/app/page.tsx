@@ -48,6 +48,11 @@ export default function Home() {
   const allProjects = getAllProjects();
   const trendingProjects = getTrendingProjects();
   
+  // Debug log for projects data
+  console.log('[HomePage] All projects fetched:', 
+    allProjects.map(p => ({id: p.id, name: p.name}))
+  );
+  
   return (
     <main className="min-h-screen bg-gray-50">
       <Navbar />

@@ -30,7 +30,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Initialize Particle Network with a slight delay to ensure DOM is ready
     const initAuth = async () => {
       try {
-        console.log('Initializing Particle Network...');
+        console.log('[AuthProvider] Initializing Particle Network...');
         
         // Small delay to ensure everything is ready
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -38,15 +38,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const particle = initParticle();
         
         if (particle) {
-          console.log('Particle Network initialized successfully');
+          console.log('[AuthProvider] Particle Network initialized successfully');
           // Check if user is already authenticated
-          await checkAuth();
+          const isAuthenticated = await checkAuth();
+          console.log('[AuthProvider] Authentication check completed, isAuthenticated:', isAuthenticated);
         } else {
-          console.warn('Particle Network initialization failed or running on server');
+          console.warn('[AuthProvider] Particle Network initialization failed or running on server');
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('[AuthProvider] Error initializing auth:', error);
       } finally {
+        console.log('[AuthProvider] Initialization completed, setting isInitialized to true');
         setIsInitialized(true);
       }
     };

@@ -114,18 +114,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: true, error: null });
       
       const isLoggedIn = isLoggedInToParticle();
-      console.log('Auth check - logged in status:', isLoggedIn);
+      console.log('[AuthStore] Auth check - logged in status:', isLoggedIn);
       
       if (isLoggedIn) {
         // If logged in, try to get user info including wallet
         const particleUserInfo = getParticleUserInfo();
-        console.log('Particle user info from auth check:', particleUserInfo);
+        console.log('[AuthStore] Particle user info from auth check:', particleUserInfo);
         
         if (particleUserInfo && particleUserInfo.wallets && particleUserInfo.wallets.length > 0) {
           const walletAddress = particleUserInfo.wallets[0].public_address;
           
           if (walletAddress) {
             // We have wallet address, set authenticated
+            console.log('[AuthStore] Setting user authenticated with wallet:', walletAddress);
             set({ 
               isAuthenticated: true,
               user: {
@@ -138,19 +139,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               }
             });
           } else {
+            console.log('[AuthStore] No wallet address found, setting not authenticated');
             set({ user: null, isAuthenticated: false });
           }
         } else {
+          console.log('[AuthStore] No wallets found, setting not authenticated');
           set({ user: null, isAuthenticated: false });
         }
       } else {
+        console.log('[AuthStore] Not logged in to Particle, setting not authenticated');
         set({ user: null, isAuthenticated: false });
       }
       
       set({ isLoading: false });
       return isLoggedIn;
     } catch (error) {
-      console.error('Auth check error:', error);
+      console.error('[AuthStore] Auth check error:', error);
       set({
         error: error instanceof Error ? error.message : 'Failed to check authentication',
         isLoading: false,
