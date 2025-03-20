@@ -23,9 +23,15 @@ interface ProjectPageProps {
 /**
  * Project detail page component
  */
-export default function ProjectPage({ params }: ProjectPageProps) {
-  const projectId = params.id;
-  const project = getProjectById(projectId);
+export default async function ProjectPage({ params }: ProjectPageProps) {
+  const projectId = parseInt(params.id, 10);
+  
+  // Handle invalid ID format
+  if (isNaN(projectId)) {
+    notFound();
+  }
+  
+  const project = await getProjectById(projectId);
   
   // If project not found, return 404
   if (!project) {
@@ -49,8 +55,17 @@ export default function ProjectPage({ params }: ProjectPageProps) {
  * Generate metadata for the project page
  */
 export async function generateMetadata({ params }: ProjectPageProps) {
-  const projectId = params.id;
-  const project = getProjectById(projectId);
+  const projectId = parseInt(params.id, 10);
+  
+  // Handle invalid ID format
+  if (isNaN(projectId)) {
+    return {
+      title: 'Invalid Project ID - Cryptomato',
+      description: 'The project ID format is invalid.',
+    };
+  }
+  
+  const project = await getProjectById(projectId);
   
   if (!project) {
     return {
@@ -61,6 +76,6 @@ export async function generateMetadata({ params }: ProjectPageProps) {
   
   return {
     title: `${project.name} - Cryptomato`,
-    description: project.description,
+    description: project.description || `Learn about ${project.name} cryptocurrency`,
   };
 } 

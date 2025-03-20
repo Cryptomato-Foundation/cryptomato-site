@@ -9,31 +9,28 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CryptoProject } from '@/lib/data/crypto-projects';
+import { CryptoProject, getPaginatedProjects, DEFAULT_PAGE_SIZE } from '@/lib/data/crypto-projects';
 import ProjectCard from './ProjectCard';
 
 /**
  * Props for the ProjectList component
  */
 interface ProjectListProps {
-  /** Array of projects to display */
-  projects: CryptoProject[];
+  /** Initial array of projects to display */
+  initialProjects: CryptoProject[];
+  /** Total count of projects in the database */
+  totalCount: number;
   /** Optional search query to filter projects */
   searchQuery?: string;
 }
 
 /**
- * Number of items to load per page for infinite scroll
- */
-const ITEMS_PER_PAGE = 8;
-
-/**
  * Ensure a project has a valid ID for React keys
  */
 function getProjectKey(project: CryptoProject, index: number): string {
-  // Use the project id if it exists and is a string
-  if (project && project.id && typeof project.id === 'string' && project.id.trim() !== '') {
-    return project.id;
+  // Use the project id if it exists
+  if (project && project.id !== undefined) {
+    return `project-${project.id}`;
   }
   // Fallback to a synthetic key
   return `project-${index}-${Date.now()}`;
@@ -42,106 +39,64 @@ function getProjectKey(project: CryptoProject, index: number): string {
 /**
  * ProjectList displays a grid of crypto projects with infinite scroll
  */
-export function ProjectList({ projects, searchQuery = '' }: ProjectListProps) {
+export function ProjectList({ initialProjects, totalCount, searchQuery = '' }: ProjectListProps) {
   const [displayedProjects, setDisplayedProjects] = useState<Array<CryptoProject & { _key?: string }>>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  const [initialized, setInitialized] = useState(false); // Track initial load
-  const [resetCounter, setResetCounter] = useState(0); // Counter to force resets
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const loader = useRef<HTMLDivElement>(null);
   
-  // Filter projects based on search query
-  const filteredProjects = useCallback(() => {
-    // Defensive check for projects array
-    if (!Array.isArray(projects)) {
-      console.warn('[ProjectList] projects is not an array:', projects);
-      return [];
-    }
-    
-    if (!searchQuery) return projects;
-    
-    const lowercaseQuery = searchQuery.toLowerCase();
-    return projects.filter(project => 
-      project.name.toLowerCase().includes(lowercaseQuery) || 
-      project.description.toLowerCase().includes(lowercaseQuery)
-    );
-  }, [projects, searchQuery]);
-  
-  // Reset everything when projects or search changes
+  // Initialize with initial projects
   useEffect(() => {
-    // Completely reset state when source data changes
-    console.log('[ProjectList] Source data changed, resetting state');
-    setDisplayedProjects([]);
-    setPage(1);
-    setHasMore(true);
-    setInitialized(false);
-    setResetCounter(c => c + 1); // Increment reset counter to trigger other effects
-  }, [projects, searchQuery]);
-  
-  // Load initial data once on component mount or after reset
-  useEffect(() => {
-    const loadInitial = async () => {
-      // Avoid concurrent loads
-      if (initialized) return;
+    if (initialProjects && initialProjects.length > 0) {
+      // Add unique keys to each project
+      const projectsWithKeys = initialProjects.map((project, index) => ({
+        ...project,
+        _key: getProjectKey(project, index)
+      }));
       
-      try {
-        setInitialized(true); // Mark as initialized to prevent duplicate loads
-        
-        const filtered = filteredProjects();
-        console.log('[ProjectList] Loading initial projects:', filtered.length);
-        
-        // Add unique keys to each project
-        const projectsWithKeys = filtered
-          .slice(0, ITEMS_PER_PAGE)
-          .map((project, index) => ({
-            ...project,
-            _key: getProjectKey(project, index)
-          }));
-        
-        setDisplayedProjects(projectsWithKeys);
-        setPage(2); // Start at page 2 for next load
-        setHasMore(filtered.length > ITEMS_PER_PAGE);
-      } catch (error) {
-        console.error('[ProjectList] Error loading initial projects:', error);
-        setInitialized(true); // Still mark as initialized to prevent infinite retries
-      }
-    };
-    
-    loadInitial();
-  }, [filteredProjects, resetCounter, initialized]);
+      setDisplayedProjects(projectsWithKeys);
+      setPage(2); // Start at page 2 for next load
+      setHasMore(initialProjects.length < totalCount);
+    }
+  }, [initialProjects, totalCount]);
   
-  // Load more projects when scrolling
-  const loadMoreProjects = useCallback(() => {
-    // Check if we're in a valid state to load more
-    if (!initialized || !hasMore) return;
+  // Load more projects from the server
+  const loadMoreProjects = useCallback(async () => {
+    if (isLoading || !hasMore) return;
     
     try {
-      const filtered = filteredProjects();
-      const start = (page - 1) * ITEMS_PER_PAGE;
-      const end = page * ITEMS_PER_PAGE;
-      const nextProjects = filtered.slice(start, end);
+      setIsLoading(true);
+      setError(null);
       
-      if (nextProjects.length > 0) {
-        // Add unique keys to each project
-        const projectsWithKeys = nextProjects.map((project, index) => ({
-          ...project,
-          _key: getProjectKey(project, start + index)
-        }));
-        
-        setDisplayedProjects(prev => [...prev, ...projectsWithKeys]);
-        setPage(prevPage => prevPage + 1);
+      console.log(`[ProjectList] Loading page ${page} from server...`);
+      const nextPageProjects = await getPaginatedProjects(page, DEFAULT_PAGE_SIZE);
+      
+      if (nextPageProjects.length === 0) {
+        setHasMore(false);
+        return;
       }
       
-      setHasMore(end < filtered.length);
+      // Add unique keys to each project
+      const projectsWithKeys = nextPageProjects.map((project, index) => ({
+        ...project,
+        _key: getProjectKey(project, (page - 1) * DEFAULT_PAGE_SIZE + index)
+      }));
+      
+      setDisplayedProjects(prev => [...prev, ...projectsWithKeys]);
+      setPage(prevPage => prevPage + 1);
+      setHasMore(displayedProjects.length + nextPageProjects.length < totalCount);
     } catch (error) {
       console.error('[ProjectList] Error loading more projects:', error);
+      setError('Failed to load more projects. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [page, filteredProjects, hasMore, initialized]);
+  }, [page, isLoading, hasMore, displayedProjects.length, totalCount]);
   
   // Setup intersection observer for infinite scroll
   useEffect(() => {
-    if (!initialized) return;
-    
     const options = {
       root: null,
       rootMargin: '20px',
@@ -149,7 +104,7 @@ export function ProjectList({ projects, searchQuery = '' }: ProjectListProps) {
     };
     
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore) {
+      if (entries[0].isIntersecting && hasMore && !isLoading) {
         loadMoreProjects();
       }
     }, options);
@@ -163,15 +118,16 @@ export function ProjectList({ projects, searchQuery = '' }: ProjectListProps) {
         observer.unobserve(loader.current);
       }
     };
-  }, [hasMore, loadMoreProjects, initialized]);
+  }, [hasMore, loadMoreProjects, isLoading]);
   
-  const currentFilteredProjects = filteredProjects();
-  
-  if (!Array.isArray(currentFilteredProjects) || currentFilteredProjects.length === 0) {
+  // Show empty state when no projects are available
+  if (!displayedProjects || displayedProjects.length === 0) {
     return (
       <div className="py-20 text-center">
         <h3 className="text-xl font-semibold">No projects found</h3>
-        <p className="text-gray-500 mt-2">Try adjusting your search query</p>
+        <p className="text-gray-500 mt-2">
+          {searchQuery ? 'Try adjusting your search query' : 'Projects will appear here once available'}
+        </p>
       </div>
     );
   }
@@ -201,6 +157,26 @@ export function ProjectList({ projects, searchQuery = '' }: ProjectListProps) {
             <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
             <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
           </div>
+        </div>
+      )}
+      
+      {/* Error message */}
+      {error && (
+        <div className="text-center py-4">
+          <p className="text-red-500">{error}</p>
+          <button 
+            onClick={() => loadMoreProjects()} 
+            className="mt-2 text-blue-500 underline"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+      
+      {/* End of results message */}
+      {!hasMore && displayedProjects.length > 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>You've reached the end of the list</p>
         </div>
       )}
     </div>
