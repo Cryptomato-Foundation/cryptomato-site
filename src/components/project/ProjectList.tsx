@@ -9,147 +9,181 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CryptoProject } from '@/lib/data/crypto-projects';
+import { CryptoProject, getPaginatedProjects, DEFAULT_PAGE_SIZE } from '@/lib/data/crypto-projects';
 import ProjectCard from './ProjectCard';
+import TagFilters from '../ui/TagFilters';
 
 /**
  * Props for the ProjectList component
  */
 interface ProjectListProps {
-  /** Array of projects to display */
-  projects: CryptoProject[];
+  /** Initial array of projects to display */
+  initialProjects: CryptoProject[];
+  /** Total count of projects in the database */
+  totalCount: number;
   /** Optional search query to filter projects */
   searchQuery?: string;
+  /** Optional array of tags for filtering */
+  tags?: string[];
 }
-
-/**
- * Number of items to load per page for infinite scroll
- */
-const ITEMS_PER_PAGE = 8;
 
 /**
  * Ensure a project has a valid ID for React keys
  */
 function getProjectKey(project: CryptoProject, index: number): string {
-  // Use the project id if it exists and is a string
-  if (project && project.id && typeof project.id === 'string' && project.id.trim() !== '') {
-    return project.id;
+  // Use the project id if it exists
+  if (project && project.id !== undefined) {
+    return `project-${project.id}`;
   }
   // Fallback to a synthetic key
   return `project-${index}-${Date.now()}`;
 }
 
 /**
+ * Loading skeleton for project cards
+ */
+function ProjectCardSkeleton() {
+  return (
+    <div className="bg-white shadow rounded-lg overflow-hidden animate-pulse">
+      <div className="h-48 w-full bg-gray-300"></div>
+      <div className="p-4">
+        <div className="h-6 bg-gray-300 rounded mb-2 w-3/4"></div>
+        <div className="h-4 bg-gray-300 rounded mb-1 w-full"></div>
+        <div className="h-4 bg-gray-300 rounded w-4/5"></div>
+        <div className="mt-3 flex justify-between">
+          <div className="h-3 bg-gray-300 rounded w-1/4"></div>
+          <div className="h-3 bg-gray-300 rounded w-1/5"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Grid of loading skeletons
+ */
+function LoadingSkeletons({ count = 8 }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {Array.from({ length: count }).map((_, i) => (
+        <ProjectCardSkeleton key={`skeleton-${i}`} />
+      ))}
+    </div>
+  );
+}
+
+/**
  * ProjectList displays a grid of crypto projects with infinite scroll
  */
-export function ProjectList({ projects, searchQuery = '' }: ProjectListProps) {
+export function ProjectList({ initialProjects, totalCount, searchQuery = '', tags = [] }: ProjectListProps) {
   const [displayedProjects, setDisplayedProjects] = useState<Array<CryptoProject & { _key?: string }>>([]);
+  const [filteredProjects, setFilteredProjects] = useState<Array<CryptoProject & { _key?: string }>>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  const [initialized, setInitialized] = useState(false); // Track initial load
-  const [resetCounter, setResetCounter] = useState(0); // Counter to force resets
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [newItemsCount, setNewItemsCount] = useState(0);
   const loader = useRef<HTMLDivElement>(null);
+  const gridEndRef = useRef<HTMLDivElement>(null);
   
-  // Filter projects based on search query
-  const filteredProjects = useCallback(() => {
-    // Defensive check for projects array
-    if (!Array.isArray(projects)) {
-      console.warn('[ProjectList] projects is not an array:', projects);
-      return [];
-    }
-    
-    if (!searchQuery) return projects;
-    
-    const lowercaseQuery = searchQuery.toLowerCase();
-    return projects.filter(project => 
-      project.name.toLowerCase().includes(lowercaseQuery) || 
-      project.description.toLowerCase().includes(lowercaseQuery)
-    );
-  }, [projects, searchQuery]);
-  
-  // Reset everything when projects or search changes
+  // Initialize with initial projects
   useEffect(() => {
-    // Completely reset state when source data changes
-    console.log('[ProjectList] Source data changed, resetting state');
-    setDisplayedProjects([]);
-    setPage(1);
-    setHasMore(true);
-    setInitialized(false);
-    setResetCounter(c => c + 1); // Increment reset counter to trigger other effects
-  }, [projects, searchQuery]);
-  
-  // Load initial data once on component mount or after reset
-  useEffect(() => {
-    const loadInitial = async () => {
-      // Avoid concurrent loads
-      if (initialized) return;
+    if (initialProjects && initialProjects.length > 0) {
+      // Add unique keys to each project
+      const projectsWithKeys = initialProjects.map((project, index) => ({
+        ...project,
+        _key: getProjectKey(project, index)
+      }));
       
-      try {
-        setInitialized(true); // Mark as initialized to prevent duplicate loads
-        
-        const filtered = filteredProjects();
-        console.log('[ProjectList] Loading initial projects:', filtered.length);
-        
-        // Add unique keys to each project
-        const projectsWithKeys = filtered
-          .slice(0, ITEMS_PER_PAGE)
-          .map((project, index) => ({
-            ...project,
-            _key: getProjectKey(project, index)
-          }));
-        
-        setDisplayedProjects(projectsWithKeys);
-        setPage(2); // Start at page 2 for next load
-        setHasMore(filtered.length > ITEMS_PER_PAGE);
-      } catch (error) {
-        console.error('[ProjectList] Error loading initial projects:', error);
-        setInitialized(true); // Still mark as initialized to prevent infinite retries
-      }
-    };
-    
-    loadInitial();
-  }, [filteredProjects, resetCounter, initialized]);
+      setDisplayedProjects(projectsWithKeys);
+      setFilteredProjects(projectsWithKeys);
+      setPage(2); // Start at page 2 for next load
+      setHasMore(initialProjects.length < totalCount);
+      setIsInitialLoad(false);
+    } else {
+      setIsInitialLoad(false);
+    }
+  }, [initialProjects, totalCount]);
   
-  // Load more projects when scrolling
-  const loadMoreProjects = useCallback(() => {
-    // Check if we're in a valid state to load more
-    if (!initialized || !hasMore) return;
+  // Apply tag filters when selectedTags changes
+  useEffect(() => {
+    if (selectedTags.length > 0) {
+      const filtered = displayedProjects.filter(project => 
+        project.tag_names && 
+        Array.isArray(project.tag_names) && 
+        // Project should have at least one of the selected tags
+        project.tag_names.some(tag => selectedTags.includes(tag))
+      );
+      setFilteredProjects(filtered);
+    } else {
+      // No tags selected, show all projects
+      setFilteredProjects(displayedProjects);
+    }
+  }, [selectedTags, displayedProjects]);
+  
+  // Handler for tag selection changes
+  const handleTagsChange = (newSelectedTags: string[]) => {
+    setSelectedTags(newSelectedTags);
+    // Scroll to top of grid when changing filters
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  // Load more projects from the server
+  const loadMoreProjects = useCallback(async () => {
+    if (isLoading || !hasMore) return;
     
     try {
-      const filtered = filteredProjects();
-      const start = (page - 1) * ITEMS_PER_PAGE;
-      const end = page * ITEMS_PER_PAGE;
-      const nextProjects = filtered.slice(start, end);
+      setIsLoading(true);
+      setError(null);
       
-      if (nextProjects.length > 0) {
-        // Add unique keys to each project
-        const projectsWithKeys = nextProjects.map((project, index) => ({
-          ...project,
-          _key: getProjectKey(project, start + index)
-        }));
-        
-        setDisplayedProjects(prev => [...prev, ...projectsWithKeys]);
-        setPage(prevPage => prevPage + 1);
+      console.log(`[ProjectList] Loading page ${page} from server...`);
+      const nextPageProjects = await getPaginatedProjects(page, DEFAULT_PAGE_SIZE);
+      
+      if (nextPageProjects.length === 0) {
+        setHasMore(false);
+        return;
       }
       
-      setHasMore(end < filtered.length);
+      // Add unique keys to each project
+      const projectsWithKeys = nextPageProjects.map((project, index) => ({
+        ...project,
+        _key: getProjectKey(project, (page - 1) * DEFAULT_PAGE_SIZE + index)
+      }));
+      
+      // Short delay to make the transition smoother
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Remember how many new items we're adding for animation purposes
+      setNewItemsCount(projectsWithKeys.length);
+      
+      setDisplayedProjects(prev => [...prev, ...projectsWithKeys]);
+      setPage(prevPage => prevPage + 1);
+      setHasMore(nextPageProjects.length === DEFAULT_PAGE_SIZE);
+      
+      // Scroll to show the first new item if loading was triggered by button
+      setTimeout(() => {
+        setNewItemsCount(0); // Reset new items count
+      }, 1000);
     } catch (error) {
       console.error('[ProjectList] Error loading more projects:', error);
+      setError('Failed to load more projects. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [page, filteredProjects, hasMore, initialized]);
+  }, [page, isLoading, hasMore]);
   
   // Setup intersection observer for infinite scroll
   useEffect(() => {
-    if (!initialized) return;
-    
     const options = {
       root: null,
-      rootMargin: '20px',
-      threshold: 1.0
+      rootMargin: '200px', // Load earlier for smoother experience
+      threshold: 0.1
     };
     
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore) {
+      if (entries[0].isIntersecting && hasMore && !isLoading) {
         loadMoreProjects();
       }
     }, options);
@@ -163,44 +197,122 @@ export function ProjectList({ projects, searchQuery = '' }: ProjectListProps) {
         observer.unobserve(loader.current);
       }
     };
-  }, [hasMore, loadMoreProjects, initialized]);
+  }, [hasMore, loadMoreProjects, isLoading]);
   
-  const currentFilteredProjects = filteredProjects();
+  // Extract unique tags from all displayed projects
+  const projectTags = Array.from(new Set(
+    displayedProjects
+      .filter(project => project.tag_names && Array.isArray(project.tag_names))
+      .flatMap(project => project.tag_names || [])
+  )).slice(0, 20); // Limit to 20 most common tags for now
   
-  if (!Array.isArray(currentFilteredProjects) || currentFilteredProjects.length === 0) {
+  // Show loading state during initial load
+  if (isInitialLoad) {
     return (
-      <div className="py-20 text-center">
-        <h3 className="text-xl font-semibold">No projects found</h3>
-        <p className="text-gray-500 mt-2">Try adjusting your search query</p>
+      <div className="py-4">
+        <div className="h-12 bg-gray-200 animate-pulse rounded-full mb-6"></div>
+        <LoadingSkeletons count={8} />
       </div>
     );
   }
   
+  // Show empty state when no projects are available
+  if (!displayedProjects || displayedProjects.length === 0) {
+    return (
+      <div className="py-20 text-center">
+        <h3 className="text-xl font-semibold">No projects found</h3>
+        <p className="text-gray-500 mt-2">
+          {searchQuery ? 'Try adjusting your search query' : 'Projects will appear here once available'}
+        </p>
+      </div>
+    );
+  }
+  
+  // Determine index where new items begin for animation
+  const newItemsStartIndex = filteredProjects.length - newItemsCount;
+  
   return (
-    <div className="py-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {displayedProjects.map((project, index) => {
-          // Use the precomputed key or generate a new one
-          const key = project._key || getProjectKey(project, index);
-          // Omit our internal _key property from the props
-          const { _key, ...projectProps } = project;
-          return (
-            <ProjectCard 
-              key={key} 
-              project={projectProps as CryptoProject} 
-            />
-          );
-        })}
+    <div className="py-4">
+      {/* Tag filters */}
+      {projectTags.length > 0 && (
+        <TagFilters 
+          tags={tags.length > 0 ? tags : projectTags} 
+          selectedTags={selectedTags} 
+          onTagsChange={handleTagsChange}
+        />
+      )}
+      
+      <div className="mt-4 transition-all duration-300 ease-in-out">
+        {/* Project grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProjects.map((project, index) => {
+            // Use the precomputed key or generate a new one
+            const key = project._key || getProjectKey(project, index);
+            // Omit our internal _key property from the props
+            const { _key, ...projectProps } = project;
+            // Check if this is one of the newly loaded items
+            const isNewItem = newItemsCount > 0 && index >= newItemsStartIndex;
+            
+            return (
+              <div key={key} className={isNewItem ? 'opacity-0 animate-[fadeInUp_0.5s_forwards_0.3s]' : ''}>
+                <ProjectCard project={projectProps as CryptoProject} />
+              </div>
+            );
+          })}
+        </div>
+        <div ref={gridEndRef}></div>
+        
+        {/* Empty state when filtered projects are empty */}
+        {filteredProjects.length === 0 && (
+          <div className="py-20 text-center">
+            <h3 className="text-xl font-semibold">No projects match the selected tags</h3>
+            <p className="text-gray-500 mt-2">
+              Try selecting different tags or view all projects
+            </p>
+          </div>
+        )}
       </div>
       
-      {/* Loading indicator */}
-      {hasMore && (
-        <div ref={loader} className="py-8 flex justify-center" aria-label="Loading more projects">
-          <div className="animate-pulse flex space-x-2">
-            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-          </div>
+      {/* Load more section */}
+      {hasMore && filteredProjects.length > 0 && (
+        <div 
+          ref={loader} 
+          className="pt-10 pb-4 flex flex-col items-center justify-center" 
+          aria-label="Loading more projects"
+        >
+          {isLoading ? (
+            <div className="w-full">
+              <p className="text-center text-gray-500 mb-4">Loading more projects...</p>
+              <LoadingSkeletons count={4} />
+            </div>
+          ) : (
+            <button 
+              onClick={loadMoreProjects}
+              className="px-6 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-md hover:scale-105 active:scale-95 transform duration-200"
+            >
+              Load more projects
+            </button>
+          )}
+        </div>
+      )}
+      
+      {/* Error message */}
+      {error && (
+        <div className="text-center py-6 my-4 bg-red-50 rounded-lg">
+          <p className="text-red-600 font-medium">{error}</p>
+          <button 
+            onClick={() => loadMoreProjects()} 
+            className="mt-2 px-4 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+      
+      {/* End of results message */}
+      {!hasMore && filteredProjects.length > 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>You've reached the end of the list</p>
         </div>
       )}
     </div>

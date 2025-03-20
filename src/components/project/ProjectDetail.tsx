@@ -19,9 +19,41 @@ interface ProjectDetailProps {
 }
 
 /**
+ * Format a date string to a readable format
+ */
+function formatDate(dateString?: string): string {
+  if (!dateString) return 'Unknown';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (e) {
+    return 'Invalid date';
+  }
+}
+
+/**
+ * Get the website URL from project data
+ */
+function getWebsiteUrl(project: CryptoProject): string | null {
+  if (project.urls?.website && project.urls.website.length > 0) {
+    return project.urls.website[0];
+  }
+  return null;
+}
+
+/**
  * ProjectDetail displays comprehensive information about a crypto project
  */
 export function ProjectDetail({ project }: ProjectDetailProps) {
+  const websiteUrl = getWebsiteUrl(project);
+  const rating = project.tomatoRating || 50; // Default to 50 if undefined
+  const ratingCount = project.ratingCount || 0; // Default to 0 if undefined
+  
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       {/* Project header with banner image */}
@@ -38,10 +70,16 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
         
         <div className="absolute bottom-0 left-0 p-6 w-full">
           <div className="flex items-center gap-4 mb-2">
-            <TomatoRating rating={project.tomatoRating} size="lg" className="bg-black/50 p-1 rounded text-white" />
-            <span className="text-white font-medium text-sm">{project.ratingCount} reviews</span>
+            <TomatoRating rating={rating} size="lg" className="bg-black/50 p-1 rounded text-white" />
+            <span className="text-white font-medium text-sm">{ratingCount} reviews</span>
           </div>
           <h1 className="text-white text-3xl md:text-4xl font-bold">{project.name}</h1>
+          <div className="flex items-center gap-2 text-white/80 mt-1">
+            <span className="font-medium bg-gray-800/50 px-2 py-0.5 rounded text-sm">{project.symbol}</span>
+            {project.category && (
+              <span className="text-sm">{project.category}</span>
+            )}
+          </div>
         </div>
       </div>
       
@@ -49,50 +87,97 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
       <div className="p-6">
         <div className="mb-6">
           <h2 className="text-xl font-bold mb-2">About {project.name}</h2>
-          <p className="text-gray-700">{project.description}</p>
+          <p className="text-gray-700">{project.description || 'No description available.'}</p>
+          
+          {websiteUrl && (
+            <a 
+              href={websiteUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-block mt-3 text-blue-600 hover:underline"
+            >
+              Visit Website →
+            </a>
+          )}
         </div>
         
         {/* Additional details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h3 className="font-semibold mb-2">Key Information</h3>
-            <ul className="space-y-1 text-sm text-gray-600">
-              <li className="flex justify-between">
-                <span>Launched:</span>
-                <span className="font-medium">2023</span>
+            <ul className="space-y-1 text-sm text-gray-600 border rounded-md divide-y">
+              <li className="flex justify-between p-2">
+                <span>Symbol:</span>
+                <span className="font-medium">{project.symbol}</span>
               </li>
-              <li className="flex justify-between">
-                <span>Category:</span>
-                <span className="font-medium">DeFi</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Blockchain:</span>
-                <span className="font-medium">Ethereum</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Token:</span>
-                <span className="font-medium">Yes (ERC-20)</span>
-              </li>
+              {project.date_launched && (
+                <li className="flex justify-between p-2">
+                  <span>Launched:</span>
+                  <span className="font-medium">{formatDate(project.date_launched)}</span>
+                </li>
+              )}
+              {project.twitter_username && (
+                <li className="flex justify-between p-2">
+                  <span>Twitter:</span>
+                  <a 
+                    href={`https://twitter.com/${project.twitter_username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-blue-600 hover:underline"
+                  >
+                    @{project.twitter_username}
+                  </a>
+                </li>
+              )}
+              {project.subreddit && (
+                <li className="flex justify-between p-2">
+                  <span>Reddit:</span>
+                  <a 
+                    href={`https://reddit.com/r/${project.subreddit}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-blue-600 hover:underline"
+                  >
+                    r/{project.subreddit}
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
           
           <div>
             <h3 className="font-semibold mb-2">Community Score</h3>
-            <div className="flex items-center">
+            <div className="flex items-center mb-4">
               <div className="w-full bg-gray-200 rounded-full h-4">
                 <div 
                   className={`h-4 rounded-full ${
-                    project.tomatoRating >= 60 ? 'bg-[var(--fresh)]' : 'bg-[var(--rotten)]'
+                    rating >= 60 ? 'bg-[var(--fresh)]' : 'bg-[var(--rotten)]'
                   }`}
-                  style={{ width: `${project.tomatoRating}%` }}
+                  style={{ width: `${rating}%` }}
                   role="progressbar"
-                  aria-valuenow={project.tomatoRating}
+                  aria-valuenow={rating}
                   aria-valuemin={0}
                   aria-valuemax={100}
                 ></div>
               </div>
-              <span className="ml-3 font-bold">{project.tomatoRating}%</span>
+              <span className="ml-3 font-bold">{rating}%</span>
             </div>
+            
+            {project.tag_names && project.tag_names.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2">Tags</h3>
+                <div className="flex flex-wrap gap-2">
+                  {project.tag_names.map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className="bg-gray-100 px-2 py-1 rounded-full text-xs text-gray-800"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         

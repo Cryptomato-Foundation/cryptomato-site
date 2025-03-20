@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CryptoProject, getAllProjects, searchProjects } from '@/lib/data/crypto-projects';
+import { CryptoProject, searchProjects, getAllTags } from '@/lib/data/crypto-projects';
 import Navbar from '@/components/layout/Navbar';
 import ProjectList from '@/components/project/ProjectList';
 import Footer from '@/components/layout/Footer';
@@ -22,22 +22,47 @@ export default function SearchPage() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const [results, setResults] = useState<CryptoProject[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [tags, setTags] = useState<string[]>([]);
   
-  // Filter projects when query changes
-  const filterProjects = useCallback(() => {
-    if (!query) {
-      setResults(getAllProjects());
-      return;
-    }
+  // Load tags for filtering
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const allTags = await getAllTags();
+        setTags(allTags);
+      } catch (error) {
+        console.error('Error loading tags:', error);
+      }
+    };
     
-    const filteredProjects = searchProjects(query);
-    setResults(filteredProjects);
+    fetchTags();
+  }, []);
+  
+  // Load projects based on search query
+  const loadSearchResults = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const filteredProjects = await searchProjects(query);
+      setResults(filteredProjects);
+      setTotalCount(filteredProjects.length); // For client-side search, total count is the result length
+    } catch (error) {
+      console.error('Error loading search results:', error);
+      setError('Failed to load search results. Please try again.');
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [query]);
   
-  // Update results when query changes
+  // Load results when query changes
   useEffect(() => {
-    filterProjects();
-  }, [query, filterProjects]);
+    loadSearchResults();
+  }, [query, loadSearchResults]);
   
   return (
     <main className="min-h-screen bg-gray-50">
@@ -49,16 +74,47 @@ export default function SearchPage() {
           <h1 className="text-2xl font-bold text-gray-800">
             {query ? `Search Results: ${query}` : 'All Projects'}
           </h1>
-          <p className="text-gray-600 mt-1">
-            {query
-              ? `Found ${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"`
-              : 'Browse all crypto projects and see their Cryptomato score'
-            }
-          </p>
+          {isLoading ? (
+            <p className="text-gray-600 mt-1">
+              Searching...
+            </p>
+          ) : error ? (
+            <p className="text-red-500 mt-1">
+              {error}
+              <button 
+                onClick={loadSearchResults}
+                className="ml-2 text-blue-500 underline"
+              >
+                Try Again
+              </button>
+            </p>
+          ) : (
+            <p className="text-gray-600 mt-1">
+              {query
+                ? `Found ${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"`
+                : 'Browse all crypto projects and see their Cryptomato score'
+              }
+            </p>
+          )}
         </div>
         
         {/* Projects list */}
-        <ProjectList projects={results} />
+        {isLoading ? (
+          <div className="py-20 text-center">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="h-6 bg-gray-300 rounded w-1/4 mb-4"></div>
+              <div className="h-4 bg-gray-300 rounded w-1/2 mb-2"></div>
+              <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+            </div>
+          </div>
+        ) : (
+          <ProjectList 
+            initialProjects={results} 
+            totalCount={totalCount} 
+            searchQuery={query} 
+            tags={tags}
+          />
+        )}
       </div>
       
       <Footer />
