@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CryptoProject, searchProjects } from '@/lib/data/crypto-projects';
+import { CryptoProject, searchProjects, getAllTags } from '@/lib/data/crypto-projects';
 import Navbar from '@/components/layout/Navbar';
 import ProjectList from '@/components/project/ProjectList';
 import Footer from '@/components/layout/Footer';
@@ -25,6 +25,21 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [tags, setTags] = useState<string[]>([]);
+  
+  // Load tags for filtering
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const allTags = await getAllTags();
+        setTags(allTags);
+      } catch (error) {
+        console.error('Error loading tags:', error);
+      }
+    };
+    
+    fetchTags();
+  }, []);
   
   // Load projects based on search query
   const loadSearchResults = useCallback(async () => {
@@ -93,7 +108,12 @@ export default function SearchPage() {
             </div>
           </div>
         ) : (
-          <ProjectList initialProjects={results} totalCount={totalCount} searchQuery={query} />
+          <ProjectList 
+            initialProjects={results} 
+            totalCount={totalCount} 
+            searchQuery={query} 
+            tags={tags}
+          />
         )}
       </div>
       

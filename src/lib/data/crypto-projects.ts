@@ -209,4 +209,35 @@ export async function searchProjects(query: string): Promise<CryptoProject[]> {
     console.error('Error in searchProjects:', error);
     return [];
   }
+}
+
+/**
+ * Get all unique tags from projects
+ * @returns Array of unique tag names
+ */
+export async function getAllTags(): Promise<string[]> {
+  try {
+    // Fetch tag_names from all projects
+    const { data, error } = await supabase
+      .from('crypto_projects')
+      .select('tag_names');
+    
+    if (error) {
+      console.error('Error fetching tags:', error);
+      throw error;
+    }
+    
+    // Flatten tag_names arrays and filter out null/undefined values
+    const allTags = data
+      .filter(project => project.tag_names && Array.isArray(project.tag_names))
+      .flatMap(project => project.tag_names);
+    
+    // Remove duplicates by using Set
+    const uniqueTags = [...new Set(allTags)];
+    
+    return uniqueTags;
+  } catch (error) {
+    console.error('Error in getAllTags:', error);
+    return [];
+  }
 } 

@@ -8,7 +8,12 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllProjects, getTrendingProjects, getTotalProjectCount } from '@/lib/data/crypto-projects';
+import { 
+  getAllProjects, 
+  getTrendingProjects, 
+  getTotalProjectCount,
+  getAllTags
+} from '@/lib/data/crypto-projects';
 import Navbar from '@/components/layout/Navbar';
 import HeroCarousel from '@/components/ui/HeroCarousel';
 import ProjectList from '@/components/project/ProjectList';
@@ -45,19 +50,22 @@ function ProjectListFallback() {
  */
 export default async function Home() {
   // Get data from server-side functions
-  const [allProjectsPromise, trendingProjectsPromise, totalCountPromise] = await Promise.all([
+  const [allProjectsPromise, trendingProjectsPromise, totalCountPromise, tagsPromise] = await Promise.all([
     getAllProjects(),
     getTrendingProjects(),
-    getTotalProjectCount()
+    getTotalProjectCount(),
+    getAllTags()
   ]);
   
   const allProjects = await allProjectsPromise;
   const trendingProjects = await trendingProjectsPromise;
   const totalCount = await totalCountPromise;
+  const tags = await tagsPromise;
   
   // Debug log for projects data
   console.log('[HomePage] Projects fetched for initial render:', allProjects.length);
   console.log('[HomePage] Total projects in database:', totalCount);
+  console.log('[HomePage] Available tags:', tags.length);
   
   return (
     <main className="min-h-screen bg-gray-50">
@@ -91,7 +99,8 @@ export default async function Home() {
         <Suspense fallback={<ProjectListFallback />}>
           <ProjectList 
             initialProjects={allProjects} 
-            totalCount={totalCount} 
+            totalCount={totalCount}
+            tags={tags}
           />
         </Suspense>
       </div>

@@ -23,8 +23,12 @@ interface ProjectCardProps {
  * ProjectCard displays summary information about a crypto project
  */
 export function ProjectCard({ project }: ProjectCardProps) {
+  // Default values for possibly undefined properties
+  const tomatoRating = project.tomatoRating || 50; // Default to 50 if undefined
+  const ratingCount = project.ratingCount || 0;    // Default to 0 if undefined
+  
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-md transition-shadow fade-in-up">
       <Link href={`/project/${project.id}`} className="block" aria-label={`View details for ${project.name}`}>
         <div className="relative h-48 w-full">
           <Image 
@@ -36,7 +40,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           />
           {/* Rating badge overlay */}
           <div className="absolute bottom-2 left-2 z-10">
-            <TomatoRating rating={project.tomatoRating} size="md" className="bg-black/70 p-1 rounded text-white" />
+            <TomatoRating rating={tomatoRating} size="md" className="bg-black/70 p-1 rounded text-white" />
           </div>
         </div>
         
@@ -45,9 +49,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <p className="text-gray-600 text-sm line-clamp-2">{project.description}</p>
           
           <div className="mt-3 flex justify-between items-center text-xs text-gray-500">
-            <span>{project.ratingCount} reviews</span>
+            <span>{ratingCount} reviews</span>
             <span>
-              {project.tomatoRating >= 60 ? (
+              {tomatoRating >= 60 ? (
                 <span className="text-[var(--fresh)]">Fresh</span>
               ) : (
                 <span className="text-[var(--rotten)]">Rotten</span>
